@@ -1,0 +1,4 @@
+Warning (10273): Verilog HDL warning at execute_cycle.v(34): extended using "x" or "z" File: E:/pipeline/execute_cycle.v Line: 34
+Warning (10273): Verilog HDL warning at execute_cycle.v(45): extended using "x" or "z" File: E:/pipeline/execute_cycle.v Line: 45
+Warning (10273): Verilog HDL warning at execute_cycle.v(64): extended using "x" or "z" File: E:/pipeline/execute_cycle.v Line: 64
+Warning (10273): Verilog HDL warning at writeback_cycle.v(15): extended using "x" or "z" File: E:/pipeline/writeback_cycle.v Line: 15

@@ -1,0 +1,108 @@
+`timescale 1ns/1ps
+
+module execute_cycle (
+    input clk, rst, RegWrite_E, ALUSrc_E, MemWrite_E, Branch_E, Jump_E,
+    input [1:0] ResultSrc_E,
+    input [2:0] ALUControl_E, funct3_E,
+    input [31:0] RD1_E, RD2_E, Imm_Ext_E,
+    input [4:0] RD_E,
+    input [31:0] PC_E, PCPlus4_E, ResultW, ALU_Result_M,
+    input [1:0] ForwardA_E, ForwardB_E,
+    output PCSrc_E, RegWrite_M, MemWrite_M,
+    output [1:0] ResultSrc_M,
+    output [4:0] RD_M,
+    output [31:0] PCPlus4_M, WriteData_M, ALU_Result_M,
+    output [31:0] PC_Target_E
+);
+
+    wire [31:0] Src_A, Src_B_interim, Src_B;
+    wire [31:0] Result_E;
+    wire Zero_E;
+
+    reg RegWrite_E_r, MemWrite_E_r;
+    reg [1:0] ResultSrc_E_r;
+    reg [4:0] RD_E_r;
+    reg [31:0] PCPlus4_E_r, Src_B_interim_r, Result_E_r;
+
+    reg [31:0] Src_A_reg;
+    assign Src_A = Src_A_reg;
+    always @(*) begin
+        case (ForwardA_E)
+            2'b00: Src_A_reg = RD1_E;
+            2'b01: Src_A_reg = ResultW;
+            2'b10: Src_A_reg = ALU_Result_M;
+            default: Src_A_reg = 32'bx;
+        endcase
+    end
+
+    reg [31:0] Src_B_interim_reg;
+    assign Src_B_interim = Src_B_interim_reg;
+    always @(*) begin
+        case (ForwardB_E)
+            2'b00: Src_B_interim_reg = RD2_E;
+            2'b01: Src_B_interim_reg = ResultW;
+            2'b10: Src_B_interim_reg = ALU_Result_M;
+            default: Src_B_interim_reg = 32'bx;
+        endcase
+    end
+
+    assign Src_B = ALUSrc_E ? Imm_Ext_E : Src_B_interim;
+
+    reg [31:0] ALU_Result;
+    assign Result_E = ALU_Result;
+    assign Zero_E = (ALU_Result == 32'h0);
+    always @(*) begin
+        case (ALUControl_E)
+            3'b000: ALU_Result = Src_A + Src_B;
+            3'b001: ALU_Result = Src_A - Src_B;
+            3'b010: ALU_Result = Src_A & Src_B;
+            3'b011: ALU_Result = Src_A | Src_B;
+            3'b100: ALU_Result = Src_A ^ Src_B;
+            3'b101: ALU_Result = ($signed(Src_A) < $signed(Src_B)) ? 32'b1 : 32'b0;
+            3'b110: ALU_Result = (Src_A < Src_B) ? 32'b1 : 32'b0;
+            3'b111: ALU_Result = Src_A << Src_B[4:0];
+            default: ALU_Result = 32'bx;
+        endcase
+    end
+
+    assign PC_Target_E = PC_E + Imm_Ext_E;
+
+    reg Branch_En;
+    always @(*) begin
+        case (funct3_E)
+            3'b000: Branch_En = Zero_E;
+            3'b001: Branch_En = ~Zero_E;
+            default: Branch_En = 1'b0;
+        endcase
+    end
+    assign PCSrc_E = Jump_E | (Branch_E & Branch_En);
+
+    always @(posedge clk or negedge rst) begin
+        if (!rst) begin
+            RegWrite_E_r <= 1'b0;
+            MemWrite_E_r <= 1'b0;
+            ResultSrc_E_r <= 2'b00;
+            RD_E_r <= 5'h0;
+            PCPlus4_E_r <= 32'h0;
+            Src_B_interim_r <= 32'h0;
+            Result_E_r <= 32'h0;
+        end else begin
+            RegWrite_E_r <= RegWrite_E;
+            MemWrite_E_r <= MemWrite_E;
+            ResultSrc_E_r <= ResultSrc_E;
+            RD_E_r <= RD_E;
+            PCPlus4_E_r <= PCPlus4_E;
+            Src_B_interim_r <= Src_B_interim;
+            Result_E_r <= Result_E;
+        end
+    end
+
+    assign RegWrite_M = RegWrite_E_r;
+    assign MemWrite_M = MemWrite_E_r;
+    assign ResultSrc_M = ResultSrc_E_r;
+    assign RD_M = RD_E_r;
+    assign PCPlus4_M = PCPlus4_E_r;
+    assign WriteData_M = Src_B_interim_r;
+    assign ALU_Result_M = Result_E_r;
+
+endmodule
