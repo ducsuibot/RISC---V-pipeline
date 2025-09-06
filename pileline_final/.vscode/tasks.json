@@ -1,0 +1,20 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile and Run Testbench",
+            "type": "shell",
+            "command": "iverilog -sverilog -s tb_riscv_pipeline -o tb_riscv hazard_unit.v fetch_cycle.v decode_cycle.v execute_cycle.v memory_cycle.v writeback_cycle.v riscv_pipeline.v tb_riscv_pipeline.sv ; vvp tb_riscv",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false
+            }
+        }
+    ]
+}

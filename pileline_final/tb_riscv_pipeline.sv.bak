@@ -1,0 +1,138 @@
+`timescale 1ns/1ps
+
+module tb_branch_jump;
+
+    // =============================
+    // Parameters
+    // =============================
+    parameter CLK_PERIOD = 10;
+    parameter REG_COUNT  = 32;
+    parameter IMEM_SIZE  = 256;
+
+    // =============================
+    // DUT signals
+    // =============================
+    reg clk;
+    reg rst_n;
+
+    // Instance DUT
+    riscv_pipeline dut (
+        .clk(clk),
+        .rst_n(rst_n)
+    );
+
+    // =============================
+    // Clock generation
+    // =============================
+    initial begin
+        clk = 1'b1;
+        forever #(CLK_PERIOD/2) clk = ~clk;
+    end
+
+    // =============================
+    // Reset logic
+    // =============================
+    initial begin
+        rst_n = 1'b0;
+        #(CLK_PERIOD);
+        rst_n = 1'b1;
+    end
+
+    // =============================
+    // Load program
+    // =============================
+    initial begin
+        $display("==== Loading branch/jump test program ===="); // Transcript: Prints program loading message
+        if ($readmemh("C:/Users/Minh Duc/Downloads/pp/program.txt", dut.fetch.imem) == 0) begin
+            $display("ERROR: Failed to load program.txt"); // Transcript: Error if file load fails
+            $finish;
+        end else begin
+            $display("SUCCESS: Loaded program.txt"); // Transcript: Success message
+        end
+    end
+
+    // =============================
+    // Load golden register file
+    // =============================
+    reg [31:0] golden_regfile [0:REG_COUNT-1];
+    initial begin
+        integer i;
+        for (i = 0; i < REG_COUNT; i = i + 1) begin
+            golden_regfile[i] = 32'h0; // Initialize to avoid X states
+        end
+        $display("==== Loading golden output ===="); // Transcript: Prints golden output loading message
+        if ($readmemh("C:/Users/Minh Duc/Downloads/pp/golden_output.txt", golden_regfile) == 0) begin
+            $display("ERROR: Failed to load golden_output.txt"); // Transcript: Error if file load fails
+            $finish;
+        end else begin
+            $display("SUCCESS: Loaded golden_output.txt"); // Transcript: Success message
+            $display("Golden Register File Contents:"); // Transcript: Prints golden register file header
+            for (i = 0; i < REG_COUNT; i = i + 1) begin
+                $display("x%0d: 0x%08h", i, golden_regfile[i]); // Transcript: Prints each golden register value
+            end
+        end
+    end
+
+    // =============================
+    // Monitor PC + Branch + Jump
+    // =============================
+    initial begin
+        $display("=============================================================="); // Transcript: Header for monitor table
+        $display("Time\tPC\tInstr\tPCSrc_E\tALU_Result_E\tResult_W");
+        $display("==============================================================");
+        $monitor("%0t\t%h\t%h\t%b\t%h\t%h", // Transcript: Prints per-cycle monitor data
+                 $time,
+                 dut.fetch.PC_F,
+                 dut.fetch.imem[dut.fetch.PC_F[9:2]],
+                 dut.fetch.PCSrc_E,
+                 dut.fetch.PC_Target_E,
+                 dut.writeback.Result_W);
+    end
+
+    // =============================
+    // Finish simulation
+    // =============================
+    initial begin
+        #(CLK_PERIOD * 300);  // Run CPU for 300 cycles
+        $display("Debug: Reached check_result task"); // Transcript: Confirms check_result is called
+        check_result();
+        $finish;
+    end
+
+    // =============================
+    // Task: Compare register file with golden output
+    // =============================
+    task check_result;
+        integer i;
+        integer pass_count;
+        integer fail_count;
+        begin
+            pass_count = 0;
+            fail_count = 0;
+
+            $display("\n==== Register File Comparison ===="); // Transcript: Comparison header
+            $display("Reg\tDUT Output\tGolden Output\tStatus");
+            $display("---------------------------------------------------");
+
+            for (i = 0; i < REG_COUNT; i = i + 1) begin
+                if (dut.decode.registers[i] === golden_regfile[i]) begin
+                    pass_count = pass_count + 1;
+                    $display("x%0d:\t0x%08h\t0x%08h\tPASS", // Transcript: Per-register comparison
+                             i, dut.decode.registers[i], golden_regfile[i]);
+                end else begin
+                    fail_count = fail_count + 1;
+                    $display("x%0d:\t0x%08h\t0x%08h\tFAIL",
+                             i, dut.decode.registers[i], golden_regfile[i]);
+                end
+            end
+
+            $display("\n==== Test Summary ===="); // Transcript: Summary header
+            if (fail_count == 0) begin
+                $display("ALL TESTS PASSED! (%0d/%0d registers matched)", pass_count, REG_COUNT); // Transcript: Pass message
+            end else begin
+                $display("TEST FAILED! Passed=%0d | Failed=%0d", pass_count, fail_count); // Transcript: Fail message
+            end
+        end
+    endtask
+
+endmodule
