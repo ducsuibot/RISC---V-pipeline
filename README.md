@@ -13,6 +13,8 @@ Mục tiêu là mô phỏng hoạt động của bộ xử lý cơ bản, có kh
 - ✅ Testbench kèm nhiều chương trình mẫu để kiểm chứng
 
 ## 📂 Cấu trúc dự án
+## 🖼️ Sơ đồ Pipeline
+![Pipeline 5 stage](final.drawio.png)
 
 ## 📌 Kết luận
 - ✅ Đã triển khai thành công **bộ xử lý RISC-V pipeline 5 stage** bằng **Verilog**.  
